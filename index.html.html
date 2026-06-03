@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Tamil Kids Classroom Blackboard</title>
+  
+  <!-- Fixed core font service preconnect URLs -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700&display=swap" rel="stylesheet">
+  
+  <style>
+    :root {
+      --bg-color: #E2E8F0;
+      --board-color: #1E3A1E; /* Authentic green school chalkboard color */
+      --chalk-white: #FFFFFF;
+    }
+
+    * { box-sizing: border-box; user-select: none; -webkit-user-select: none; }
+
+    body {
+      margin: 0; padding: 0; background-color: var(--bg-color);
+      font-family: 'Baloo 2', 'Latha', 'Tamil Sangam MN', Arial, sans-serif;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      min-height: 100vh; overflow: hidden;
+    }
+
+    .toolbar {
+      display: flex; gap: 15px; margin-bottom: 10px; align-items: center;
+    }
+
+    /* OPTIMIZED: Increased width bounds to 650px to fit long compound letters */
+    .board-container {
+      position: relative; width: 650px; height: 500px;
+      border: 8px solid #8B5A2B; /* Wooden board frame style */
+      border-radius: 8px; box-shadow: 0 16px 32px rgba(0,0,0,0.3);
+    }
+
+    canvas { position: absolute; top: 0; left: 0; border-radius: 2px; }
+    #textLayer { z-index: 1; }
+    #drawLayer { z-index: 2; cursor: crosshair; }
+
+    .color-dot {
+      width: 35px; height: 35px; border-radius: 50%; cursor: pointer;
+      border: 3px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
+    
+    button {
+      padding: 8px 20px; font-size: 1.1rem; font-weight: bold;
+      border-radius: 20px; border: none; cursor: pointer; background: white;
+      box-shadow: 0 4px 0 #CBD5E1; transition: transform 0.1s;
+    }
+    button:active { transform: translateY(3px); box-shadow: 0 0px 0 #CBD5E1; }
+  </style>
+</head>
+<body>
+
+  <div class="toolbar">
+    <button id="prevBtn">⬅️ Back</button>
+    <!-- Simple child-friendly color picking anchors -->
+    <div class="color-dot" style="background: #FFFFFF;" onclick="changeColor('#FFFFFF')"></div>
+    <div class="color-dot" style="background: #FFEB3B;" onclick="changeColor('#FFEB3B')"></div>
+    <div class="color-dot" style="background: #FF4081;" onclick="changeColor('#FF4081')"></div>
+    <div class="color-dot" style="background: #00E676;" onclick="changeColor('#00E676')"></div>
+    <button id="clearBtn">Clear Board 🧼</button>
+    <button id="nextBtn">Next ➡️</button>
+  </div>
+
+  <div class="board-container">
+    <!-- Updated internal dimensions matching the new 650x500 layout boundaries -->
+    <canvas id="textLayer" width="650" height="500"></canvas>
+    <canvas id="drawLayer" width="650" height="500"></canvas>
+  </div>
+
+  <script>
+    const vowels = ["அ", "ஆ", "இ", "ஈ", "உ", "ஊ", "எ", "ஏ", "ஐ", "ஒ", "ஓ", "ஔ"];
+    let currentIndex = 0;
+    let drawing = false;
+    let activeColor = "#FFFFFF";
+    let rectBounds = null;
+
+    const tCanvas = document.getElementById('textLayer');
+    const tCtx = tCanvas.getContext('2d', { alpha: false });
+    const dCanvas = document.getElementById('drawLayer');
+    const dCtx = dCanvas.getContext('2d', { alpha: true });
+
+    function initBoard() {
+      // Draw standard green chalkboard background surface
+      tCtx.fillStyle = "#1E3A1E";
+      tCtx.fillRect(0, 0, 650, 500);
+
+      // Render the faint backing tracing text guide perfectly centered at width 325px
+      tCtx.font = "bold 320px 'Baloo 2', 'Latha', 'Tamil Sangam MN', Arial, sans-serif";
+      tCtx.textAlign = "center";
+      tCtx.textBaseline = "middle";
+      tCtx.fillStyle = "rgba(255, 255, 255, 0.16)"; // Faint chalk trace line
+      tCtx.fillText(vowels[currentIndex], 325, 250);
+    }
+
+    // FIXED: Patched array targets to read mobile touchscreen logs correctly
+    function getCoords(e) {
+      let clientX, clientY;
+      if (e.touches && e.touches.length > 0) {
+        clientX = e.touches[0].clientX;
+        clientY = e.touches[0].clientY;
+      } else {
+        clientX = e.clientX;
+        clientY = e.clientY;
+      }
+      return { x: clientX - rectBounds.left, y: clientY - rectBounds.top };
+    }
+
+    function startDraw(e) {
+      drawing = true;
+      rectBounds = dCanvas.getBoundingClientRect(); // Map container constraints once
+      const pt = getCoords(e);
+      dCtx.beginPath();
+      dCtx.moveTo(pt.x, pt.y);
+      
+      dCtx.lineWidth = 14; // Chalk marker thickness
+      dCtx.lineCap = 'round';
+      dCtx.lineJoin = 'round';
+      dCtx.strokeStyle = activeColor;
+    }
+
+    function drawSequence(e) {
+      if (!drawing) return;
+      e.preventDefault();
+      const pt = getCoords(e);
+      dCtx.lineTo(pt.x, pt.y);
+      dCtx.stroke();
+    }
+
+    function changeColor(colorHex) { activeColor = colorHex; }
+    
+    function clearInk() { dCtx.clearRect(0, 0, 650, 500); }
+
+    function moveLetter(dir) {
+      currentIndex = (currentIndex + dir + vowels.length) % vowels.length;
+      clearInk();
+      initBoard();
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      rectBounds = dCanvas.getBoundingClientRect();
+      initBoard();
+      
+      // Fallback renderer link to auto-refresh background if fonts download after load
+      if (document.fonts) {
+        document.fonts.ready.then(() => {
+          initBoard();
+        });
+      }
+
+      dCanvas.addEventListener('mousedown', startDraw);
+      dCanvas.addEventListener('mousemove', drawSequence);
+      window.addEventListener('mouseup', () => drawing = false);
+
+      dCanvas.addEventListener('touchstart', startDraw);
+      dCanvas.addEventListener('touchmove', drawSequence);
+      window.addEventListener('touchend', () => drawing = false);
+
+      document.getElementById('clearBtn').addEventListener('click', clearInk);
+      document.getElementById('nextBtn').addEventListener('click', () => moveLetter(1));
+      document.getElementById('prevBtn').addEventListener('click', () => moveLetter(-1));
+    });
+  </script>
+</body>
+</html>
